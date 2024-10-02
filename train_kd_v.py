@@ -89,9 +89,6 @@ def main(args, list_teachers):
 
     '''Define The Student Model'''
     model = teachers_dict[args.student](pretrained=True).to(args.device)
-    #best_model = "/export/livia/home/vision/Bkarimian/vision_embeddings/results/sparkling-paper-2/best_model.pth"
-    #checkpoint = torch.load(best_model)
-    #model.load_state_dict(checkpoint)
 
     optimizer = torch.optim.Adam(
         model.parameters(), lr=args.lr, weight_decay=args.weight_decay
