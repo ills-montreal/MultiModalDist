@@ -25,4 +25,4 @@ datasets_dict = {
             #"SBD": torchvision.datasets.SBDataset,
             #"USPS": torchvision.datasets.USPS,
             #"VOC": torchvision.datasets.VOCDetection, #(image, target) where target is a dictionary of the XML tree.
-            } 
+            } #test
