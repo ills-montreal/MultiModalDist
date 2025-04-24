@@ -4,6 +4,7 @@ from typing import List, Tuple, Dict, Optional, Callable
 def make_aligned_collate_fn(modalities, modality_collate_fn):
     def collate_fn(batch):
         input, embedding, teacher_idxs, data_type = list(zip(*batch))
+        '''returns only modality specific data, with None for other modalities to prevent error'''
         modaity_especific_inputs = {mod: [None] * len(input) for mod in modalities}
         modaity_especific_embeddings = {mod: [None] * len(input) for mod in modalities}
         modaity_especific_teacher_idxs = {mod: [None] * len(input) for mod in modalities}

@@ -61,14 +61,15 @@ def get_pretraining_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", type=str, default="./data")
     parser.add_argument("--embeddings-dir", type=str, default="./Embeddings")
+    #!UPDATE!#
 
-    #General Modality parameters
+    #General Modality parameters, add any needed paramerter here
 
     parser.add_argument(
         "--modalities-to-simulate",
         nargs="+",
         type=str,
-        default=["vision"],#, "molecular"
+        default=["vision", "text"],#, "molecular"
     )
 
     #Text parameters
@@ -77,9 +78,9 @@ def get_pretraining_args():
         "--text-embedders-to-simulate",
         nargs="+",
         type=str,
-        default=["mnasnet", "shufflenet"],#"gte"
+        default=["DINOv2_", "PVTv2_"],#
     )
-    parser.add_argument("--text-student", type=str, default="mnasnet")
+    parser.add_argument("--text-student", type=str, default="PVTv2_")
 
 
     #Vision parameters
@@ -88,9 +89,9 @@ def get_pretraining_args():
         "--vision-embedders-to-simulate",
         nargs="+",
         type=str,
-        default=["mnasnet", "shufflenet"],
+        default=["DINOv2", "PVTv2"],
     )
-    parser.add_argument("--vision-student", type=str, default="mnasnet")
+    parser.add_argument("--vision-student", type=str, default="PVTv2")
 
     #Molecular parameters
     parser.add_argument("--molecular-dataset", type=str, default="MOSES")
@@ -99,7 +100,7 @@ def get_pretraining_args():
         "--molecular-embedders-to-simulate",
         nargs="+",
         type=str,
-        default=["GNN", "BERT", "GPT", "Denoising", "ThreeD"],
+        default=["GNN"],#, "BERT", "GPT", "Denoising", "ThreeD"
     )
     
     parser.add_argument(
@@ -124,7 +125,6 @@ def get_pretraining_args():
 
 
     # training parameters
-    #parser.add_argument("--student", type=str, default="resnet18") #?
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--num-epochs", type=int, default=10)
     parser.add_argument("--lr", type=float, default=1e-4)
@@ -135,7 +135,7 @@ def get_pretraining_args():
     # other parameters
     parser.add_argument("--checkpoint", type=str, default=None)
     parser.add_argument("--n-workers", type=int, default=6)
-    parser.add_argument("--dim", type=int, default=1000)
+    parser.add_argument("--out_dim", type=int, default=1000)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--log-interval", type=int, default=1)
     parser.add_argument("--seed", type=int, default=42)

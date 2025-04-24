@@ -1,0 +1,15 @@
+results
+Data/cifar-10-batches-py/*
+Data/CUB_200_2011/*
+Data/dtd/*
+Data/fgvc-aircraft-2013b/*
+Data/stl10_binary/*
+Data/*.txt
+Data/*.mat
+Data/*.tar.gz
+*/__pycache__
+*/*/__pycache__
+*/*/*/__pycache__
+*/*/*/*/__pycache__
+wandb
+Embeddings/*/*.npy

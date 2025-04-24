@@ -1,6 +1,6 @@
 import os
 import time
-
+import itertools
 import torch
 from tqdm import tqdm
 import torch.nn as nn
@@ -30,26 +30,31 @@ class TrainerGM:
         self.wandb = wandb
         self.embedder_name_list = embedder_name_list
         self.batch_size = batch_size
-        self.knife_optimizer = torch.optim.AdamW(knifes.parameters(), lr=1e-3)
+        self.knife_optimizer = torch.optim.AdamW(itertools.chain.from_iterable(model.parameters() for model in knifes.values()), lr=1e-3)
         self.out_dir = out_dir
         self.mods = mods
 
     @tracing_decorator("knife")
     def get_knife_loss(self, embeddings, batch, loss_per_embedder=None):
-        losses = [torch.tensor(0.0)]*len(self.knifes)
-        for mod in self.mods:
+        loss = 0
+        for mod_idx in range(len(self.mods)):
+            mod = self.mods[mod_idx]
+            losses = [torch.tensor(0.0)]*len(self.knifes[mod])
             indexes = [i for i in range(len(batch[mod + "_emb"])) if batch[mod + "_emb"][i] is not None]
-            data = [batch[mod + "_emb"][i] for i in range(len(batch[mod + "_emb"])) if batch[mod + "_emb"][i] is not None]
             if len(indexes) == 0:
                 continue
-            losses = [losses[i] + self.knifes[i](embeddings[indexes], torch.tensor(data).to(self.device, non_blocking=True)) for i in range(len(self.knifes))]
-        loss = sum(losses)
-        if loss_per_embedder is not None:
-            for i, l in enumerate(losses):
-                loss_per_embedder[self.embedder_name_list[i]] += l
+            for i in range(len(self.knifes[mod])):
+                data = [batch[mod + "_emb"][j][i] for j in indexes]
+                #print(mod, i, torch.tensor(data).to(self.device, non_blocking=True).shape, embeddings[indexes].shape)
+                losses[i] = losses[i] + self.knifes[mod][i](embeddings[indexes], torch.tensor(data).to(self.device, non_blocking=True))
+
+            loss += sum(losses)
+            if loss_per_embedder is not None:
+                for i, l in enumerate(losses):
+                    loss_per_embedder[self.embedder_name_list[mod][i]] += l
 
         return loss
-    
+
 
     def train(
         self,
@@ -94,7 +99,7 @@ class TrainerGM:
     def train_epoch(self, train_loader, epoch):
         self.model.train()
         train_loss = 0
-        train_loss_per_embedder = {name: 0 for name in self.embedder_name_list}
+        train_loss_per_embedder = {name: 0 for mod in self.embedder_name_list.keys() for name in self.embedder_name_list[mod]}
         for batch_idx, batch in enumerate(
             tqdm(
                 train_loader,
@@ -112,7 +117,7 @@ class TrainerGM:
                 loss_per_embedder=train_loss_per_embedder,
             )
             train_loss += loss
-        for name in self.embedder_name_list:
+        for name in train_loss_per_embedder.keys():
             train_loss_per_embedder[name] = train_loss_per_embedder[name].item() / len(
                 train_loader
             )
@@ -123,7 +128,7 @@ class TrainerGM:
     def eval(self, valid_loader, epoch):
         self.model.eval()
         eval_loss = 0
-        test_loss_per_embedder = {name: 0 for name in self.embedder_name_list}
+        test_loss_per_embedder = {name: 0 for mod in self.embedder_name_list.keys() for name in self.embedder_name_list[mod]}
         for batch_idx, batch in enumerate(
             tqdm(
                 valid_loader,
@@ -139,7 +144,7 @@ class TrainerGM:
             )
             eval_loss += l
 
-        for name in self.embedder_name_list:
+        for name in test_loss_per_embedder.keys():
             test_loss_per_embedder[name] = test_loss_per_embedder[name].item() / len(
                 valid_loader
             )
