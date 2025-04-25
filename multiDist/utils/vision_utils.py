@@ -14,7 +14,7 @@ from typing import List, Tuple
 import numpy as np
 from torch.utils.data import Dataset
 import glob
-from utils.embedder_info import get_embedder
+from multiDist.utils.embedder_info import get_embedder
 import torchvision.models as models
 import torch.optim as optim
 import pytorch_lightning as L
@@ -24,6 +24,16 @@ from torchmetrics.classification import BinaryAccuracy
 from transformers import DPTModel, PvtV2ForImageClassification, ViTHybridModel, CvtModel, LevitConfig, LevitModel, AutoImageProcessor, AutoModel, AutoFeatureExtractor, SwinForImageClassification, MobileViTFeatureExtractor, MobileViTForImageClassification, ViTImageProcessor, ViTForImageClassification, AutoFeatureExtractor, DeiTForImageClassificationWithTeacher, BeitImageProcessor, BeitForImageClassification
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import pytorch_lightning as pl
+import random
+
+def get_checkpoint(checkpoint, index = 0):
+    prefix = f"embedders.{index}."
+    new_ckpt = {
+        k[len(prefix):]: v
+        for k, v in checkpoint.items()
+        if k.startswith(prefix)
+    }
+    return new_ckpt
 
 def get_trasform_vision(args):
     #!UPDATE!#
@@ -908,6 +918,24 @@ class PCAMDataModule(DataModule):
         self.test_data = datasets.PCAM(root = "./Data", split = "test", download = download, transform=self.preprocess_val)
 
 
+class ModelImageTransform:
+    def __init__(self, model_name):
+
+        self.transforms = {
+            "SegFormer": AutoImageProcessor.from_pretrained("nvidia/mit-b5", return_dict=False),
+            "ViT": ViTImageProcessor.from_pretrained('google/vit-base-patch16-224', return_dict=False),
+            "Swin": AutoFeatureExtractor.from_pretrained("microsoft/swin-base-patch4-window7-224", return_dict=False),
+            "DINOv2": AutoImageProcessor.from_pretrained('facebook/dinov2-base', return_dict=False),
+            "BEiT": BeitImageProcessor.from_pretrained('microsoft/beit-base-patch16-224', return_dict=False),
+            "PVTv2": AutoImageProcessor.from_pretrained("OpenGVLab/pvt_v2_b0", return_dict=False),
+        }
+        
+        self.processor = self.transforms[model_name]
+    
+    def __call__(self, image):
+
+        processed_image = self.processor(images=image, return_tensors="pt")
+        return processed_image["pixel_values"].squeeze(0)
         
 
 class QMNISTDataModule(DataModule):

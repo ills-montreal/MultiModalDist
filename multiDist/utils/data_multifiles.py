@@ -5,11 +5,12 @@ import numpy as np
 from torchvision.transforms import v2
 from multiDist.utils.vision_utils import VisionDataset, get_trasform_vision
 from multiDist.utils.text_utils import TextDataset
+from multiDist.utils.text_utils import make_aligned_collate_fn as text_collate_fn
 from multiDist.utils.collate import *
 from torch.utils.data import DataLoader
 from utils.embedder_info import teachers_size
-
-
+from pathlib import Path
+from transformers import AutoTokenizer
 
 def get_dataset(mod, args):
     #!UPDATE!# Add molecule and text dataset
@@ -19,10 +20,9 @@ def get_dataset(mod, args):
             emb.append(teachers_size[teacher])
         return VisionDataset(teachers_path=args.embeddings_dir + "/vision", list_teachers=args.vision_embedders_to_simulate, transform = get_trasform_vision(args)), emb
     elif mod == "text":
-        emb = []
-        for teacher in args.text_embedders_to_simulate:
-            emb.append(teachers_size[teacher])
-        return VisionDataset(teachers_path=args.embeddings_dir + "/vision", list_teachers=args.vision_embedders_to_simulate, transform = get_trasform_vision(args)), emb
+        dataset = TextDataset([Path("Embeddings/text/"+pth) for pth in args.text_embedders_to_simulate])
+        emb = [ds.embeddings.shape[-1] for ds in dataset.datasets]
+        return dataset, emb 
     else:
         emb = []
         for teacher in args.molecular_embedders_to_simulate:
@@ -84,6 +84,7 @@ def get_embedding_loader(args):
         datasets[mod] = data
         embd_size.setdefault(mod, []).extend(embd)
 
+    tokenizer = AutoTokenizer.from_pretrained("Snowflake/snowflake-arctic-embed-s")
     #get the combined dataset, and split it into train and valid
     dataset = CombinedDataset(datasets)
     train_dataset, valid_dataset = torch.utils.data.random_split(dataset, [0.8, 0.2])
@@ -91,7 +92,7 @@ def get_embedding_loader(args):
         train_dataset,
         batch_size=args.batch_size,
         num_workers=args.n_workers,
-        collate_fn=make_aligned_collate_fn(args.modalities_to_simulate, modality_collate_fn = {}),
+        collate_fn=make_aligned_collate_fn(args.modalities_to_simulate, modality_collate_fn = {"text": text_collate_fn(tokenizer, teachers_dims=embd_size["text"])}),
         drop_last=True,
         shuffle=True,
     )
@@ -99,6 +100,6 @@ def get_embedding_loader(args):
         valid_dataset,
         batch_size=args.batch_size,
         num_workers=args.n_workers,
-        collate_fn=make_aligned_collate_fn(args.modalities_to_simulate, modality_collate_fn = {}),
+        collate_fn=make_aligned_collate_fn(args.modalities_to_simulate, modality_collate_fn = {"text": text_collate_fn(tokenizer, teachers_dims=embd_size["text"])}),
     )
     return train_loader, valid_loader, embd_size

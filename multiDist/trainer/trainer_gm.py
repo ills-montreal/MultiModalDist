@@ -45,9 +45,11 @@ class TrainerGM:
                 continue
             for i in range(len(self.knifes[mod])):
                 data = [batch[mod + "_emb"][j][i] for j in indexes]
-                #print(mod, i, torch.tensor(data).to(self.device, non_blocking=True).shape, embeddings[indexes].shape)
-                losses[i] = losses[i] + self.knifes[mod][i](embeddings[indexes], torch.tensor(data).to(self.device, non_blocking=True))
-
+                if isinstance(data[0], torch.Tensor):
+                    data = torch.stack(data).to(self.device, non_blocking=True)
+                else:
+                    data = torch.tensor(data).to(self.device, non_blocking=True)
+                losses[i] = losses[i] + self.knifes[mod][i](embeddings[indexes], data)
             loss += sum(losses)
             if loss_per_embedder is not None:
                 for i, l in enumerate(losses):

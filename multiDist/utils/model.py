@@ -29,9 +29,13 @@ class StudentModel(nn.Module):
         for index, mod in enumerate(self.mods):
             '''get data of each modality in the batch'''
             indexes = [i for i in range(len(batch[mod + "_emb"])) if batch[mod + "_emb"][i] is not None]
-            data = [batch[mod][i] for i in range(len(batch[mod + "_emb"])) if batch[mod + "_emb"][i] is not None]
+            data = [batch[mod][i] for i in indexes]
             '''pass data of each modality through the corresponding embedder and fc layer'''
-            x = self.embedders[index](torch.tensor(data).to(self.device))
+            if mod != "text":
+                data = torch.tensor(data).to(self.device)
+                x = self.embedders[index](data)
+            else:
+                x = torch.tensor(self.embedders[index].encode(data)).to(self.device)
             if isinstance(x, tuple):
                 x = x[0]
             x = self.fcs[index](x)

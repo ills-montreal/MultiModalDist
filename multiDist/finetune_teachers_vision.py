@@ -2,15 +2,17 @@ import argparse
 import json
 import torch
 import torchvision.models as models
-import torch
+import sys
+import os
 import torch.nn as nn
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+
 import torch.nn.functional as F
 import torch.optim as optim
 import pytorch_lightning as L
 from torchmetrics.functional import auroc
-from multiDist.utils.vision_utils import TunnerModel, TunnerModelFS, datasets_dict
-#from Data.DataClass import *
-from multiDist.utils.vision_utils import data_module_dict, data_class_dict
+from multiDist.utils.vision_utils import TunnerModel, TunnerModelFS, datasets_dict, data_module_dict, data_class_dict, ModelImageTransform, get_checkpoint
 import pandas as pd
 import os
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
@@ -19,11 +21,10 @@ from lightning.pytorch.loggers import CSVLogger, WandbLogger
 from pytorch_lightning.callbacks import RichProgressBar
 import wandb
 import logging
-from sklearn.metrics import top_k_accuracy_score, balanced_accuracy_score, accuracy_score
-from sklearn.metrics import f1_score
+from sklearn.metrics import top_k_accuracy_score, balanced_accuracy_score, accuracy_score, f1_score
 import numpy as np
-from multiDist.utils.vision_utils import teachers_dict, EmbedderFromTorchvision, embedder_size, teachers_dict_vit_all, EmbedderFromViT, ModelImageTransform
-
+from multiDist.utils.embedder_info import EmbedderFromTorchvision, get_embedder_size, teachers_dict_vit_all, EmbedderFromViT
+from multiDist.utils.embedder_info import teachers_dict_torchvision as teachers_dict
 
 def save_predictions(model, output_fname, num_classes):
     prds = torch.cat(model.predictions, dim=0)
@@ -144,14 +145,9 @@ if __name__ == "__main__":
                 #embedder_size[teacher] = 1000
             print(".......................................", args.student)
             if args.student:
-                print("here")
-                if teacher in teachers_dict_vit_all.keys():
-                    model_ = EmbedderFromViT(teacher)
-                    transform = ModelImageTransform(teacher)
-                else:
-                    model_ = teachers_dict[teacher]
-                    embedder_size[teacher] = 1000
-                checkpoint = torch.load(args.checkpoint)
+                model_ = EmbedderFromViT(teacher)
+                transform = ModelImageTransform(teacher)
+                checkpoint = get_checkpoint(torch.load(args.checkpoint))
                 model_.load_state_dict(checkpoint)
             data = data_module_dict[dataset](args.batch_size, num_workers, transform = transform, augmentations=args.augmentations)#, mixup = args.mixup
             output_name = teacher + "_" + dataset + "_teacher_"+args.type+"finetuning"
@@ -163,4 +159,4 @@ if __name__ == "__main__":
                 wandb.config.update(args)
             #wandb.config["datasets"] = dataset
 
-            finetune(args, data, model_, output_name, data_class_dict[dataset], args.epochs, embedder_size[teacher], args.fewshow, fc_layers_config = args.fc_layers)#
+            finetune(args, data, model_, output_name, data_class_dict[dataset], args.epochs, get_embedder_size(teacher), args.fewshow, fc_layers_config = args.fc_layers)#

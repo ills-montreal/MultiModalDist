@@ -2,6 +2,7 @@ import torchvision.models as models
 from torch import nn    
 import torch
 from transformers import DPTModel, PvtV2ForImageClassification, ViTHybridModel, CvtModel, LevitConfig, LevitModel, AutoImageProcessor, AutoModel, AutoFeatureExtractor, SwinForImageClassification, MobileViTFeatureExtractor, MobileViTForImageClassification, ViTImageProcessor, ViTForImageClassification, AutoFeatureExtractor, DeiTForImageClassificationWithTeacher, BeitImageProcessor, BeitForImageClassification, SegformerModel, SegformerForImageClassification, DetrFeatureExtractor, DetrModel
+from sentence_transformers import SentenceTransformer
 #!UPDATE!# 
 teachers_dict_torchvision = {
     "squeezenet": models.squeezenet1_0(pretrained = True),#
@@ -46,6 +47,8 @@ teachers_size = {
     "PVTv2": 256,
     "PVTv2_": 256,
     "DETR": 256,
+    "Snowflake/snowflake-arctic-embed-xs": 384,
+    "Snowflake/snowflake-arctic-embed-s": 384,
     }
 
 def get_embedder_size(name):
@@ -82,7 +85,33 @@ class EmbedderFromViT:
             model.classifier = torch.nn.Identity()
         return model
 
-def get_embedder(name):
+def get_embedder(name, no_float16 = True, flash_attn = False):
     if name in ["Swin", "ViT", "BEiT", "DINOv2", "PVTv2", "DINOv2_", "PVTv2_"]:
         return EmbedderFromViT(name.replace("_", ""))
+    elif name in ["Snowflake/snowflake-arctic-embed-s"]:
+        try:
+            model = SentenceTransformer(
+                name,
+                model_kwargs={
+                    "torch_dtype": torch.float16 if not no_float16 else torch.float32,
+                    "attn_implementation": (
+                        "flash_attention_2" if flash_attn else None
+                    ),
+                },
+                device="cuda",
+                trust_remote_code=True,
+            )
+        except Exception as e:
+            model = SentenceTransformer(
+                name,
+                model_kwargs={
+                    "torch_dtype": torch.float16 if not no_float16 else torch.float32,
+                },
+                device="cuda",
+                trust_remote_code=True,
+            )
+
+        if model.tokenizer.eos_token is not None:
+            model.tokenizer.pad_token = model.tokenizer.eos_token
+        return model
     return EmbedderFromTorchvision(name)

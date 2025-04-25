@@ -2,11 +2,11 @@ import argparse
 import os
 import sys
 import time
+import torch
+import wandb
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-import torch
-import wandb
 import yaml
 from emir.estimators.knife import KNIFE
 from emir.estimators.knife_estimator import KNIFEArgs
@@ -15,7 +15,7 @@ from multiDist.utils.parser import update_grouped_models, get_pretraining_args
 from multiDist.utils.data_multifiles import get_embedding_loader
 from multiDist.utils.model import get_student_model
 from multiDist.utils.embedder_info import get_embedder_size
-
+from sentence_transformers import SentenceTransformer
 
 def get_parser():
     parser = get_pretraining_args()
@@ -34,7 +34,14 @@ def main(args):
     '''Get All Embeddings Datasets '''
 
     train_loader, valid_loader, embs_dim = get_embedding_loader(args)
-
+    '''for k, batch in enumerate(train_loader):
+        if k >= 10:
+            break
+        #print(len(batch['text']), len(batch['text_emb']), len(batch['text_indexes']), len(batch['vision']), len(batch['vision_emb']), len(batch['vision_indexes']))
+        for index in range(len(batch['text'])):
+            print(batch['text'][index] is None, batch['text_emb'][index] is None, batch['text_indexes'][index] is None, batch['vision'][index] is None, batch['vision_emb'][index] is None, batch['vision_indexes'][index] is None)
+    print("Embeddings Datasets Loaded")'''
+    
     '''Create Teacher KNIFE'''
     
     if os.path.exists(args.knifes_config):
@@ -60,7 +67,13 @@ def main(args):
         knife = torch.nn.ModuleList(knife)
         knifes[emb_key] = knife
 
-
+    '''model = SentenceTransformer("Snowflake/snowflake-arctic-embed-s")
+    for k, batch in enumerate(train_loader):
+        if k >= 10:
+            break
+        print(len(batch["text"]))
+        print(model.encode(batch["text"]).shape)
+    x = x'''
     model = get_student_model(args)
     optimizer = torch.optim.Adam(
         model.parameters(), lr=args.lr, weight_decay=args.weight_decay

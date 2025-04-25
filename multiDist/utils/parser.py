@@ -78,9 +78,9 @@ def get_pretraining_args():
         "--text-embedders-to-simulate",
         nargs="+",
         type=str,
-        default=["DINOv2_", "PVTv2_"],#
+        default=["Snowflake/snowflake-arctic-embed-xs", "Snowflake/snowflake-arctic-embed-s"],#
     )
-    parser.add_argument("--text-student", type=str, default="PVTv2_")
+    parser.add_argument("--text-student", type=str, default="Snowflake/snowflake-arctic-embed-s")
 
 
     #Vision parameters
